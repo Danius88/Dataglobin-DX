@@ -8,6 +8,7 @@ from PySide6 import QtCore, QtGui, QtMultimedia, QtWidgets
 import ndspy.rom
 import ndspy.code
 from mnllib.bis import LanguageTable, TextTable, BIS_ENCODING
+from dataglobin.hash_table_tab import HashTableTab
 import dataglobin.persistent as Persistent
 import dataglobin.constants as Constants
 import dataglobin.data as Data
@@ -50,7 +51,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.program_is_already_open = False
         Data.GAME_VERSION = Persistent.LAST_VERSION
         self.init_ui()
-        self.test_ML3R()
+        self.test_ML5()
 
     def open_romfs_directory(self, version: GameID):
         directory = QtWidgets.QFileDialog.getExistingDirectory(
@@ -67,14 +68,18 @@ class MainWindow(QtWidgets.QMainWindow):
             
 
         main = QtWidgets.QTabWidget()
-        self.item_data_tab = ItemDataTab(self)
-        self.enemy_data_tab = EnemyDataTab(self)
-
-        main.addTab(self.item_data_tab, "&Item Data")
-        main.addTab(self.enemy_data_tab, "&Enemy Data")
+        if version in (GameID.ML3R, GameID.ML5):
+            self.item_data_tab = ItemDataTab(self)
+            self.enemy_data_tab = EnemyDataTab(self)
+            self.hash_table_tab = HashTableTab(self)
+            main.addTab(self.item_data_tab, "&Item Data")
+            main.addTab(self.hash_table_tab, "Hash Tables")
 
         self.setCentralWidget(main)
 
 
     def test_ML3R(self):
-        self.init_ui(GameID.ML3R, Path(r"C:/mnl/ML3R"))
+        self.init_ui(GameID.ML3R, Path(r"C:/mnl/ML3R/romfs"))
+
+    def test_ML5(self):
+        self.init_ui(GameID.ML5, Path(r"C:/mnl/ML5/romfs"))

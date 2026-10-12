@@ -171,6 +171,7 @@ class PostPJLMSAdapter(pymsbmnl.LMSAdapter):
 def remove_tags(text: str) -> str:
     return re.sub(r"\[/?[^\]]*\]", "", text)
 
+# Dumb patch until it's fully supported by mnllib
 def fix_msbt_data(raw_data: bytes) -> bytes:
     if len(raw_data) < 0x16 or raw_data[:8] != b"MsgStdBn":
         raise ValueError("Invalid MSBT header")
@@ -297,61 +298,35 @@ def parse_archive_file(path: str, filename: str) -> dict:
     raise FileNotFoundError(f"'{filename}' was not found inside {path}")
 
 def load_msbt(romfs_directory: Path):
-    MSG_FOLDER = os.path.join(romfs_directory, "Msg")
-
+    msg_folder = os.path.join(romfs_directory, "Msg")
     try:
-        if not os.path.isdir(MSG_FOLDER):
-            raise FileNotFoundError(f"Msg folder does not exist:\n{MSG_FOLDER}")
-
-        result = []
-
+        if not os.path.isdir(msg_folder):
+            raise FileNotFoundError(f"Msg folder does not exist:\n{msg_folder}")
+        result = {}
         if Data.GAME_VERSION in (GameID.ML3R, GameID.ML1R, GameID.ML5):
             for language in LANGUAGES:
-                folder = os.path.join(MSG_FOLDER, language)
-
+                folder = os.path.join(msg_folder, language)
                 if not os.path.isdir(folder):
                     continue
-
                 language_enum = Language(language)
-
-                language_data = {
-                    "language": language_enum,
-                    "msbt": [],
-                }
-
+                language_data = {}
                 item_path = os.path.join(folder, "Item.msbt")
-
                 if os.path.isfile(item_path):
                     print(f"Parsing: {item_path}")
-
                     try:
-                        language_data["msbt"].append(
-                            parse_msbt(item_path)
-                        )
+                        language_data["Item.msbt"] = parse_msbt(item_path)
                     except Exception:
-                        print(
-                            f"Error parsing {item_path}:\n"
-                            f"{traceback.format_exc()}"
-                        )
-
+                        print(f"Error parsing {item_path}:\n" f"{traceback.format_exc()}")
                 bmsg_path = os.path.join(folder, "BMsg.dat")
-
                 if os.path.isfile(bmsg_path):
                     print(f"Parsing: {bmsg_path} -> b_sys")
-
                     try:
-                        language_data["msbt"].append(
-                            parse_archive_file(bmsg_path, "b_sys")
-                        )
+                        language_data["b_sys"] = parse_archive_file(bmsg_path, "b_sys")
                     except Exception:
-                        print(
-                            f"Error parsing {bmsg_path}:\n"
-                            f"{traceback.format_exc()}"
-                        )
+                        print(f"Error parsing {bmsg_path}:\n"f"{traceback.format_exc()}")
 
-                result.append(language_data)
-
-            return result
-
+                result[language_enum] = language_data
+        return result
     except Exception:
         print("Fatal error:\n", traceback.format_exc())
+        return {}

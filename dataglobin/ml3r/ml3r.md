@@ -34,7 +34,7 @@ Stores miscellaneous data tables from the game's main campaign:
 | 5 | Gear Hash Table |
 | 6 | Badge Data |
 | 7 | Badge Sort Order |
-| 8 | Badge Badge Hash Table |
+| 8 | Badge Hash Table |
 | 9 | Gear Effects |
 | 10 | Badge Combos |
 | 11 | Mario's Stats Table |
@@ -51,8 +51,7 @@ struct Item {
     0x18-0x2F: str, Item.msbt Label -> Name (Plural)
     0x30-0x47: str, Item.msbt Label -> Description
     0x48-0x5F: str, Item.msbt Label -> Full Inventory Message
-    0x60: u16, Sprite ID*
-    0x61-0x62: ???
+    0x60: u32, Sprite ID*
     0x64: u16, Price
     0x66: u16, Effect ID*
     0x68: u16, Effect Parameter
@@ -77,21 +76,21 @@ The behavior might be slightly difference when used from the menu or in a battle
     * `03`: Is KO'd
     * `04`: Affected by negative status
     * `05`: Missing HP or BP (HP & BP)
-    * `06`: No use (HP)
-    * `07`: No use (BP)
-    * `08`: No use (POW)
-    * `09`: No use (DEF)
-    * `10`: No use (SPEED)
-    * `11`: No use (STACHE/HORN)
-    * `12`: ???
+    * `06`: HP can be increased (HP)
+    * `07`: BP can be increased (BP)
+    * `08`: POW can be increased (POW)
+    * `09`: DEF can be increased (DEF)
+    * `10`: SPEED can be increased (SPEED)
+    * `11`: STACHE/HORN can be increased (STACHE/HORN)
+    * `12`: Background Enemy (Unused)
     * `13`: All party members can act
 * `Byte 0, Bit 4`: ???
 * `Byte 0, Bit 5`: Item can be used in menu
 * `Byte 0, Bit 6`: Mushroom Pocket in Inventory Menu (useable in battle)
 * `Byte 0, Bit 7`: Is Mushroom (unused flag from previous titles)
 * `Byte 1, Bit 0`: Multi-Target (Bros only)
-* `Byte 2, Bit 1`: Exclude Bowser
-* `Byte 3, Bit 2`: Exclude Mario & Luigi
+* `Byte 1, Bit 1`: Exclude Bowser
+* `Byte 1, Bit 2`: Exclude Mario & Luigi
 
 #### Item Effects
 Item effect IDs use the same convention as the item IDs. They are as follows:
@@ -110,7 +109,7 @@ Item effect IDs use the same convention as the item IDs. They are as follows:
 | `0x1009` | SPEED HP | SPEED Increase |
 | `0x100A` | STACHE/HORN HP | STACHE/HORN Increase |
 | `0x100B` | Unused | N/A |
-| `0x100C` | Boo Biscuit | Turn duration. |
+| `0x100C` | Boo Biscuit | Turn duration |
 
 ### Gear Data
 Array of the following structure:
