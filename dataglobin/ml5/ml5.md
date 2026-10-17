@@ -38,7 +38,7 @@ Stores miscellaneous data tables from the game's main campaign:
 | 10 | Monster Hash Table |
 | 11 | Mario's Stats Table |
 | 12 | Luigi's Stats Table |
-| 13 | Bowser's Stats Table |
+| 13 | Paper Mario's Stats Table |
 
 ### Item Data
 Section 0 of DB.dat. Array of the following structure:
@@ -96,7 +96,23 @@ Usability flags:
 Array of the following structure:
 ```C
 struct Gear {
-    
+    0x00-0x17: str, Item.msbt Label -> Name (Singular)
+    0x18-0x2F: str, Item.msbt Label -> Name (Plural)
+    0x30-0x47: str, Item.msbt Label -> Description
+    0x48-0x5F: str, Item.msbt Label -> Full Inventory Message
+    0x60: u32, Sprite ID
+    0x64: u32, Price
+    0x68: u16, HP
+    0x6A: u16, BP
+    0x6C: u16, POW
+    0x6E: u16, DEF
+    0x70: u16, SPEED
+    0x72: u16, STACHE
+    0x74: u8, Category
+    0x75: u8, User
+    0x76: u16, Effect ID
+    0x78: u32, Effect Param 1
+    0x7C: u32, Effect Param 2
 }
 ```
-The Gear's ID is defined by the prefix `2xxx` and its position in the list. For example, the first entry, Thin Wear, would have ID `0x2000`, and Picnic Wear `0x2001`.
+The Gear's ID is defined by the prefix `3xxx` and its position in the list.

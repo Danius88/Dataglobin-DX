@@ -43,10 +43,12 @@ class HashTableTab(QWidget):
 
         button_layout = QHBoxLayout()
         button_layout.addStretch()
-        self.import_button = QPushButton("Import")
-        self.export_button = QPushButton("Export")
+        self.import_button = QPushButton("Import JSON")
+        self.export_button = QPushButton("Export JSON")
+        self.analyze_button = QPushButton("Analyze Hashes")
         button_layout.addWidget(self.import_button)
         button_layout.addWidget(self.export_button)
+        button_layout.addWidget(self.analyze_button)
         button_layout.addStretch()
         layout.addLayout(button_layout)
 
@@ -63,22 +65,21 @@ class HashTableTab(QWidget):
         if hash_table is None:
             self.bucket_count_label.setText("Bucket count: 0")
             return
-
-        self.bucket_count_label.setText(
-            f"Bucket count: {hash_table.bucket_amount}"
-        )
+        self.bucket_count_label.setText(f"Bucket count: {hash_table.bucket_amount}")
 
         presets = {}
         if Data.GAME_VERSION == GameID.ML3R:
             presets = Presets.ML3R_UITM_STR
-        if Data.GAME_VERSION == GameID.ML5:
+        elif Data.GAME_VERSION == GameID.ML1R:
+            presets = Presets.ML1R_UITM_STR
+        elif Data.GAME_VERSION == GameID.ML5:
             presets = Presets.ML5_UITM_STR
 
         # Hash entries use the ID without the item's category prefix
         entries_by_id = {entry.id: entry for entry in hash_table.entries}
 
-        self.hash_table.setRowCount(len(Data.ITEMS))
-        for row, item in enumerate(Data.ITEMS):
+        self.hash_table.setRowCount(len(Data.ITEMDATA["UITM"]))
+        for row, item in enumerate(Data.ITEMDATA["UITM"]):
             item_id = item.id
             item_id_text = f"{item_id:04X}"
             item_name = item.getDefaultName()

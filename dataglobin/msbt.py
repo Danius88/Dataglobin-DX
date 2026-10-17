@@ -12,10 +12,6 @@ import dataglobin.constants as Constants
 import dataglobin.data as Data
 from dataglobin.constants import GameID, Language
 
-#LANGUAGES = ["US_en", "US_fr", "US_sp", "EU_en", "EU_fr", "EU_sp", "EU_ge", "EU_it", "EU_du", "EU_pt"]
-LANGUAGES = ["US_en", "US_sp"]
-OUTPUT_JSON = "msbt_data.json"
-
 class PostPJLMSAdapter(pymsbmnl.LMSAdapter):
     def __init__(self) -> None:
         super().__init__()
@@ -297,14 +293,14 @@ def parse_archive_file(path: str, filename: str) -> dict:
             return parse_msbt_bytes(data, filename)
     raise FileNotFoundError(f"'{filename}' was not found inside {path}")
 
-def load_msbt(romfs_directory: Path):
+def load_msbt(version: GameID, romfs_directory: Path):
     msg_folder = os.path.join(romfs_directory, "Msg")
     try:
         if not os.path.isdir(msg_folder):
             raise FileNotFoundError(f"Msg folder does not exist:\n{msg_folder}")
         result = {}
-        if Data.GAME_VERSION in (GameID.ML3R, GameID.ML1R, GameID.ML5):
-            for language in LANGUAGES:
+        if version in (GameID.ML3R, GameID.ML1R, GameID.ML5):
+            for language in Data.LANGUAGES_ML5:
                 folder = os.path.join(msg_folder, language)
                 if not os.path.isdir(folder):
                     continue
