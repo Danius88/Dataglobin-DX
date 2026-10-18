@@ -43,27 +43,40 @@ class Item:
     raw_data: bytes = None
     id: int = None
     order: int = None
+    # Strings
     label_name: str = None
     label_nams: str = None
     label_desc: str = None
     label_full: str = None
+    # General
     sprite: int = None
     price: int = None
+    # Effects
     effect_id: int = None
     effect_param1: int = None
     effect_param2: int = None
+    # Usage
     type: int = None
     user: int = None
+    target_multi: bool = None
+    target_enemy: bool = None
+    target_back: bool = None
+    use_condition: int = None
+    use_menu: bool = None
+    use_battle: bool = None
+    use_arcade: bool = None
+    # Stats
     hp: int = None
     bp: int = None
     pwr: int = None
     dfn: int = None
     spe: int = None
     sta: int = None
-    flags1: list[bool] = None
-    flags2: list[bool] = None
-    flags3: list[bool] = None
-    flags4: list[bool] = None
+    # Other Flags
+    mushroom_pocket: bool = None
+    is_mushroom: bool = None
+    is_bean: bool = None
+    # Reserved
     unk1 = None
     unk2 = None
     unk3 = None
@@ -167,6 +180,28 @@ def parse_db_hash(data):
             entries.append(HashEntry(id=entry_id, length=length, last_char=last_char, bucket_id=bucket_id))
     return HashTable(bucket_amount=amount, entries=entries)
 
+def repack_db_hash(hash_table):
+    amount = hash_table.bucket_amount
+    header_size = 2 + (amount + 1) * 2
+    buckets = [[] for _ in range(amount)]
+    for entry in hash_table.entries:
+        buckets[entry.bucket_id].append(entry)
+    offsets = []
+    current_offset = header_size
+    for bucket in buckets:
+        offsets.append(current_offset)
+        current_offset += len(bucket) * 4
+    offsets.append(current_offset)
+    data = bytearray(amount.to_bytes(2, "little"))
+    for offset in offsets:
+        data.extend(offset.to_bytes(2, "little"))
+    for bucket in buckets:
+        for entry in bucket:
+            data.extend(entry.id.to_bytes(2, "little"))
+            data.append(entry.length)
+            data.extend(entry.last_char.encode("ascii"))
+    return bytes(data)
+
 def validate_db_language(version: GameID, text_dict):
     if version in (GameID.ML3R, GameID.ML1R, GameID.ML5):
         available_languages = set(text_dict.keys())
@@ -179,14 +214,7 @@ def validate_db_language(version: GameID, text_dict):
         raise RuntimeError("No available languages found in TEXT_DICT")
 
 def get_msbt_string(language: Language, filename: str, label: str) -> str | None:
-    language_data = TEXT_DICT.get(language, {})
-    msbt = language_data.get(filename)
-    if msbt is None:
-        return ""
-    for message in msbt.get("data", []):
-        if message.get("key") == label:
-            return message.get("value")
-    return ""
+    return TEXT_DICT.get(language, {}).get(filename, {}).get("data", {}).get(label, "")
 
 def get_effect_name(language: Language, key: str, item_id: int) -> str:
     names = EFFECTS_NAMES.get(key, [])
@@ -219,11 +247,13 @@ def load_data(version: GameID, rom_path: Path):
         _INV_ORDER["UITM"] = parse_db_order(db_dat[1])
         _INV_ORDER["EITM"] = parse_db_order(db_dat[4])
         _INV_ORDER["BITM"] = parse_db_order(db_dat[7])
+
         _HASH_TABLE = {}
         _HASH_TABLE["UITM"] = parse_db_hash(db_dat[2])
         _HASH_TABLE["EITM"] = parse_db_hash(db_dat[5])
         _HASH_TABLE["BITM"] = parse_db_hash(db_dat[8])
         _HASH_TABLE["BMON"] = parse_db_hash(db_dat[15])
+
         _EFFECTS_NAMES = {}
         _EFFECTS_NAMES["EITM"] = parse_db_effects(db_dat[9])
 
@@ -236,7 +266,15 @@ def load_data(version: GameID, rom_path: Path):
         Persistent.ML3R_ROMFS_INPUT = rom_path
 
     elif version == GameID.ML1R:
-        from dataglobin.ml1r.parser import parse_db_items, parse_db_effects
+        from dataglobin.ml1r.parser import (
+            parse_db_items,
+            parse_db_wear,
+            parse_db_badge,
+            parse_db_accessory,
+            parse_db_keyitem,
+            parse_db_bean,
+            parse_db_effects,
+        )
 
         _TEXT_DICT = MSBT.load_msbt(version, rom_path)
         validate_db_language(version, _TEXT_DICT)
@@ -246,6 +284,11 @@ def load_data(version: GameID, rom_path: Path):
 
         _ITEMDATA = {}
         _ITEMDATA["UITM"] = parse_db_items(db_dat[0])
+        _ITEMDATA["WITM"] = parse_db_wear(db_dat[3])
+        _ITEMDATA["BITM"] = parse_db_badge(db_dat[6])
+        _ITEMDATA["SITM"] = parse_db_accessory(db_dat[9])
+        _ITEMDATA["EITM"] = parse_db_keyitem(db_dat[12])
+        _ITEMDATA["BEAN"] = parse_db_bean(db_dat[15])
 
         _INV_ORDER = {}
         _INV_ORDER["UITM"] = parse_db_order(db_dat[1])
@@ -254,6 +297,7 @@ def load_data(version: GameID, rom_path: Path):
         _INV_ORDER["SITM"] = parse_db_order(db_dat[10])
         _INV_ORDER["EITM"] = parse_db_order(db_dat[13])
         _INV_ORDER["BEAN"] = parse_db_order(db_dat[16])
+
         _HASH_TABLE = {}
         _HASH_TABLE["UITM"] = parse_db_hash(db_dat[2])
         _HASH_TABLE["WITM"] = parse_db_hash(db_dat[5])
@@ -262,6 +306,7 @@ def load_data(version: GameID, rom_path: Path):
         _HASH_TABLE["EITM"] = parse_db_hash(db_dat[14])
         _HASH_TABLE["BEAN"] = parse_db_hash(db_dat[17])
         _HASH_TABLE["BMON"] = parse_db_hash(db_dat[24])
+        
         _EFFECTS_NAMES = {}
         _EFFECTS_NAMES["WITM"] = parse_db_effects(db_dat[18])
         _EFFECTS_NAMES["BITM"] = parse_db_effects(db_dat[19])
@@ -292,6 +337,7 @@ def load_data(version: GameID, rom_path: Path):
         _INV_ORDER["UITM"] = parse_db_order(db_dat[1])
         _INV_ORDER["WITM"] = parse_db_order(db_dat[4])
         _INV_ORDER["CITM"] = parse_db_order(db_dat[7])
+
         _HASH_TABLE = {}
         _HASH_TABLE["UITM"] = parse_db_hash(db_dat[2])
         _HASH_TABLE["WITM"] = parse_db_hash(db_dat[5])
@@ -330,32 +376,72 @@ def export_data(directory: str):
         db_dat = parse_db(db_destination)
         if GAME_VERSION == GameID.ML3R:
             from dataglobin.ml3r.parser import repack_db_items, repack_db_gear, repack_db_effects
-            db_dat[0] = repack_db_items(ITEMDATA["UITM"])
-            db_dat[1] = repack_db_order(INV_ORDER["UITM"])
-            db_dat[3] = repack_db_gear(ITEMDATA["EITM"])
-            db_dat[4] = repack_db_order(INV_ORDER["EITM"])
-            db_dat[7] = repack_db_order(INV_ORDER["BITM"])
-            db_dat[9] = repack_db_effects(EFFECTS_NAMES["EITM"])
+
+            db_dat[0]  = repack_db_items(ITEMDATA["UITM"])
+            db_dat[3]  = repack_db_gear(ITEMDATA["EITM"])
+            
+            db_dat[1]  = repack_db_order(INV_ORDER["UITM"])
+            db_dat[4]  = repack_db_order(INV_ORDER["EITM"])
+            db_dat[7]  = repack_db_order(INV_ORDER["BITM"])
+
+            db_dat[2]  = repack_db_hash(HASH_TABLE["UITM"])
+            db_dat[5]  = repack_db_hash(HASH_TABLE["EITM"])
+            db_dat[8]  = repack_db_hash(HASH_TABLE["BITM"])
+            db_dat[15] = repack_db_hash(HASH_TABLE["BMON"])
+
+            db_dat[9]  = repack_db_effects(EFFECTS_NAMES["EITM"])
 
         elif GAME_VERSION == GameID.ML1R:
-            from dataglobin.ml1r.parser import repack_db_items, repack_db_effects
+            from dataglobin.ml1r.parser import (
+                repack_db_items, 
+                repack_db_wear,
+                repack_db_badge,
+                repack_db_accessory,
+                repack_db_keyitem,
+                repack_db_bean,
+                repack_db_effects
+            )
+
             db_dat[0]  = repack_db_items(ITEMDATA["UITM"])
+            db_dat[3]  = repack_db_wear(ITEMDATA["WITM"])
+            db_dat[6]  = repack_db_badge(ITEMDATA["BITM"])
+            db_dat[9]  = repack_db_accessory(ITEMDATA["SITM"])
+            db_dat[12] = repack_db_keyitem(ITEMDATA["EITM"])
+            db_dat[15] = repack_db_bean(ITEMDATA["BEAN"])
+
             db_dat[1]  = repack_db_order(INV_ORDER["UITM"])
             db_dat[4]  = repack_db_order(INV_ORDER["WITM"])
             db_dat[7]  = repack_db_order(INV_ORDER["BITM"])
             db_dat[10] = repack_db_order(INV_ORDER["SITM"])
             db_dat[13] = repack_db_order(INV_ORDER["EITM"])
             db_dat[16] = repack_db_order(INV_ORDER["BEAN"])
+
+            db_dat[2]  = repack_db_hash(HASH_TABLE["UITM"])
+            db_dat[5]  = repack_db_hash(HASH_TABLE["WITM"])
+            db_dat[8]  = repack_db_hash(HASH_TABLE["BITM"])
+            db_dat[11] = repack_db_hash(HASH_TABLE["SITM"])
+            db_dat[14] = repack_db_hash(HASH_TABLE["EITM"])
+            db_dat[17] = repack_db_hash(HASH_TABLE["BEAN"])
+            db_dat[24] = repack_db_hash(HASH_TABLE["BMON"])
+
             db_dat[18] = repack_db_effects(EFFECTS_NAMES["WITM"])
             db_dat[19] = repack_db_effects(EFFECTS_NAMES["BITM"])
+            db_dat[20] = repack_db_effects(EFFECTS_NAMES["SITM"])
             db_dat[20] = repack_db_effects(EFFECTS_NAMES["SITM"])
         
         elif GAME_VERSION == GameID.ML5:
             from dataglobin.ml5.parser import repack_db_items
+
             db_dat[0] = repack_db_items(ITEMDATA["UITM"])
+
             db_dat[1] = repack_db_order(INV_ORDER["UITM"])
             db_dat[4] = repack_db_order(INV_ORDER["EITM"])
             db_dat[7] = repack_db_order(INV_ORDER["CITM"])
+
+            db_dat[2]  = repack_db_hash(HASH_TABLE["UITM"])
+            db_dat[5]  = repack_db_hash(HASH_TABLE["EITM"])
+            db_dat[8]  = repack_db_hash(HASH_TABLE["CITM"])
+            db_dat[10] = repack_db_hash(HASH_TABLE["BMON"])
 
         db_destination.write_bytes(repack_db(db_dat))
 

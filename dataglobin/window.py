@@ -53,7 +53,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.program_is_already_open = False
         Data.GAME_VERSION = Persistent.LAST_VERSION
         self.init_ui(Persistent.LAST_VERSION)
-        self.test_ML3R()
+        #self.test_ML1R()
 
     def open_romfs_directory(self, version: GameID):
         input_dirs = {
@@ -101,29 +101,42 @@ class MainWindow(QtWidgets.QMainWindow):
             Persistent.LAST_VERSION = version
             Persistent.export_config()
         main = QtWidgets.QTabWidget()
-        if version in (GameID.ML3R, GameID.ML1R, GameID.ML5):
-            # Consumable Items
-            self.item_data_tab = ItemDataTab(self, item_key="UITM")
-            main.addTab(self.item_data_tab, "&Item Data")
-            # Gear
-            if version in (GameID.ML3R, GameID.ML5):
-                self.gear_data_tab = ItemDataTab(self, item_key="EITM")
-                main.addTab(self.gear_data_tab, "&Gear Data")
-            elif version == GameID.ML1R:
-                self.wear_data_tab = ItemDataTab(self, item_key="WITM")
-                main.addTab(self.wear_data_tab, "&Wear Data")
-            
-            if version == GameID.ML5:
-                self.card_data_tab = ItemDataTab(self, item_key="CITM")
-                #main.addTab(self.card_data_tab, "&Card Data")
+        if version == (GameID.ML5):
+            self.tab_item_data = ItemDataTab(self, item_key="UITM")
+            main.addTab(self.tab_item_data, "&Item Data")
+            self.tab_gear_data = ItemDataTab(self, item_key="EITM")
+            main.addTab(self.tab_gear_data, "&Gear Data")
+            self.tab_hash_table = HashTableTab(self)
+            main.addTab(self.tab_hash_table, "&Hash Tables")
 
-            # Effect Strings
-            if version in (GameID.ML1R, GameID.ML3R):
-                self.effect_strings_tab = EffectStringsTab(self)
-                main.addTab(self.effect_strings_tab, "&Effect Strings")
-            # Hash Tables
-            self.hash_table_tab = HashTableTab(self)
-            main.addTab(self.hash_table_tab, "&Hash Tables")
+        elif version == (GameID.ML1R):
+            self.tab_item_data = ItemDataTab(self, item_key="UITM")
+            main.addTab(self.tab_item_data, "&Item Data")
+            self.tab_gear_data = ItemDataTab(self, item_key="WITM")
+            main.addTab(self.tab_gear_data, "&Wear Data")
+            self.tab_badge_data = ItemDataTab(self, item_key="BITM")
+            main.addTab(self.tab_badge_data, "&Badge Data")
+            self.tab_accessory_data = ItemDataTab(self, item_key="SITM")
+            main.addTab(self.tab_accessory_data, "&Accessory Data")
+            self.tab_keyitem_data = ItemDataTab(self, item_key="EITM")
+            main.addTab(self.tab_keyitem_data, "&Key Item Data")
+            self.tab_bean_data = ItemDataTab(self, item_key="BEAN")
+            main.addTab(self.tab_bean_data, "&Bean Data")
+            self.tab_hash_table = HashTableTab(self)
+            main.addTab(self.tab_hash_table, "&Hash Tables")
+            self.tab_effect_strings = EffectStringsTab(self)
+            main.addTab(self.tab_effect_strings, "&Effect Strings")
+
+        elif version == (GameID.ML3R):
+            self.tab_item_data = ItemDataTab(self, item_key="UITM")
+            main.addTab(self.tab_item_data, "&Item Data")
+            self.tab_gear_data = ItemDataTab(self, item_key="EITM")
+            main.addTab(self.tab_gear_data, "&Gear Data")
+            self.tab_hash_table = HashTableTab(self)
+            main.addTab(self.tab_hash_table, "&Hash Tables")
+            self.tab_effect_strings = EffectStringsTab(self)
+            main.addTab(self.tab_effect_strings, "&Effect Strings")
+            
         self.setCentralWidget(main)
 
     def test_ML3R(self):

@@ -51,7 +51,7 @@ struct Item {
     0x60: u32, Sprite ID*
     0x64: u32, Price
     0x68: u16, Effect ID
-    0x6A: u16, Effect Parameter
+    0x6A: s16, Effect Parameter
     0x6C-0x6D: bitflags, Usability Flags*
     0x6E: u16, ???
 }
@@ -102,17 +102,17 @@ struct Gear {
     0x48-0x5F: str, Item.msbt Label -> Full Inventory Message
     0x60: u32, Sprite ID
     0x64: u32, Price
-    0x68: u16, HP
-    0x6A: u16, BP
-    0x6C: u16, POW
-    0x6E: u16, DEF
-    0x70: u16, SPEED
-    0x72: u16, STACHE
+    0x68: s16, HP
+    0x6A: s16, BP
+    0x6C: s16, POW
+    0x6E: s16, DEF
+    0x70: s16, SPEED
+    0x72: s16, STACHE
     0x74: u8, Category
     0x75: u8, User
     0x76: u16, Effect ID
-    0x78: u32, Effect Param 1
-    0x7C: u32, Effect Param 2
+    0x78: s32, Effect Param 1
+    0x7C: s32, Effect Param 2
 }
 ```
 The Gear's ID is defined by the prefix `3xxx` and its position in the list.

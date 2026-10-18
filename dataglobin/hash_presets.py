@@ -74,6 +74,68 @@ ML1R_UITM_STR = {
     0x1019: "UITM_dehepres"
 }
 
+ML1R_EITM_STR = {
+    0x5000: "EITM_item00",
+    0x5001: "EITM_item01",
+    0x5002: "EITM_item02",
+    0x5003: "EITM_item03",
+    0x5004: "EITM_item04",
+    0x5005: "EITM_item05",
+    0x5006: "EITM_item06",
+    0x5007: "EITM_item07",
+    0x5008: "EITM_item08",
+    0x5009: "EITM_item09",
+    0x500A: "EITM_item10",
+    0x500B: "EITM_item11",
+    0x500C: "EITM_item12",
+    0x500D: "EITM_item13",
+    0x500E: "EITM_item14",
+    0x500F: "EITM_item15",
+    0x5010: "EITM_item16",
+    0x5011: "EITM_item17",
+    0x5012: "EITM_item18",
+    0x5013: "EITM_item19",
+    0x5014: "EITM_item20",
+    0x5015: "EITM_item21",
+    0x5016: "EITM_item22",
+    0x5017: "EITM_item23",
+    0x5018: "EITM_item24",
+    0x5019: "EITM_item25",
+    0x501A: "EITM_item26",
+    0x501B: "EITM_item27",
+    0x501C: "EITM_item28",
+    0x501D: "EITM_item29",
+    0x501E: "EITM_item30",
+    0x501F: "EITM_item31",
+    0x5020: "EITM_item32",
+    0x5021: "EITM_item33",
+    0x5022: "EITM_item34",
+    0x5023: "EITM_item35",
+    0x5024: "EITM_item36",
+    0x5025: "EITM_item37",
+    0x5026: "EITM_item38",
+    0x5027: "EITM_item39",
+    0x5028: "EITM_item40",
+    0x5029: "EITM_item41",
+    0x502A: "EITM_item42",
+    0x502B: "EITM_item43",
+    0x502C: "EITM_item44",
+    0x502D: "EITM_item45",
+    0x502E: "EITM_item46",
+    0x502F: "EITM_item47",
+    0x5030: "EITM_item48",
+    0x5031: "EITM_item49",
+    0x5032: "EITM_item50",
+    0x5033: "EITM_item51",
+}
+
+ML1R_BEAN_STR = {
+    0x6000: "BEAN_aha",
+    0x6001: "BEAN_ufu",
+    0x6002: "BEAN_gera",
+    0x6003: "BEAN_dehe",
+}
+
 ML3R_UITM_STR = {
     0x1000: "UITM_kinoko",
     0x1001: "UITM_superkinoko",
@@ -296,14 +358,14 @@ ML5_EITM_STR = {
     0x30B8: "EITM_p_accessory15",
 }
 
-ML3R_WITM_STR = {
+ML1R_WITM_STR = {
     0x2000: "WITM_wear00",
     0x2001: "WITM_wear01",
     0x2002: "WITM_wear02",
     0x2003: "WITM_wear03",
     0x2004: "WITM_wear04",
     0x2005: "WITM_wear05",
-    0x2006: "WITM_wear30",
+    0x2006: "WITM_wear06",
     0x2007: "WITM_wear07",
     0x2008: "WITM_wear08",
     0x2009: "WITM_wear09",
@@ -354,7 +416,7 @@ ML3R_WITM_STR = {
     0x2036: "WITM_wear54",
 }
 
-ML3R_BITM_STR = {
+ML1R_BITM_STR = {
     0x3000: "BITM_badge_0",
     0x3001: "BITM_badge_1",
     0x3002: "BITM_badge_2",
@@ -415,6 +477,23 @@ ML3R_BITM_STR = {
     0x3039: "BITM_badge_57",
     0x303A: "BITM_badge_58",
     0x303B: "BITM_badge_59",
+}
+
+ML1R_SITM_STR = {
+    0x4000: "SITM_item_0",
+    0x4001: "SITM_item_1",
+    0x4002: "SITM_item_2",
+    0x4003: "SITM_item_3",
+    0x4004: "SITM_item_4",
+    0x4005: "SITM_item_5",
+    0x4006: "SITM_item_6",
+    0x4007: "SITM_item_7",
+    0x4008: "SITM_item_8",
+    0x4009: "SITM_item_9",
+    0x400A: "SITM_item_10",
+    0x400B: "SITM_item_11",
+    0x400C: "SITM_item_12",
+    0x400D: "SITM_item_13",
 }
 
 ML3R_EITM_STR = {

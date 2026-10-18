@@ -22,18 +22,30 @@ class ItemDataTab(QtWidgets.QWidget):
         
         self.effect_presets = []
         if self.version == GameID.ML3R:
-            if self._isItem():
+            if self.item_key == "UITM":
                 self.effect_presets = Constants.ML3R_EFFECTS_UITM
-            elif self._isGear():
+            elif self.item_key == "EITM":
                 self.effect_presets = Constants.ML3R_EFFECTS_EITM
         elif self.version == GameID.ML1R:
-            if self._isItem():
+            if self.item_key == "UITM":
                 self.effect_presets = Constants.ML1R_EFFECTS_UITM
+            elif self.item_key == "WITM":
+                self.effect_presets = Constants.ML1R_EFFECTS_WITM
+            elif self.item_key == "BITM":
+                self.effect_presets = Constants.ML1R_EFFECTS_BITM
+            elif self.item_key == "SITM":
+                self.effect_presets = Constants.ML1R_EFFECTS_SITM
         elif self.version == GameID.ML5:
-            if self._isItem():
+            if self.item_key == "UITM":
                 self.effect_presets = Constants.ML5_EFFECTS_UITM
             if self.item_key == "CITM":
                 self.effect_presets = Constants.ML5_EFFECTS_CITM
+
+        self.category_presets = []
+        if self.version == GameID.ML3R and self.item_key == "EITM":
+            self.category_presets = Constants.ML3R_EITM_CATEGORY
+        elif self.version == GameID.ML5 and self.item_key == "EITM":
+            self.category_presets = Constants.ML5_EITM_CATEGORY
 
         main_layout = QtWidgets.QHBoxLayout(self)
 
@@ -49,7 +61,7 @@ class ItemDataTab(QtWidgets.QWidget):
         row.setContentsMargins(0, 0, 0, 0)
 
         self.item_list = QtWidgets.QListWidget()
-
+        self.item_list.currentItemChanged.connect(self.on_item_selected)
         buttons = QtWidgets.QVBoxLayout()
         buttons.setContentsMargins(0, 0, 0, 0)
         buttons.setSpacing(2)
@@ -132,20 +144,25 @@ class ItemDataTab(QtWidgets.QWidget):
         grid.addWidget(self.id_box, 1, 0)
 
         # Price
-        label = QtWidgets.QLabel("Price")
-        label.setAlignment(QtCore.Qt.AlignCenter)
-        self.price_box = QtWidgets.QSpinBox()
-        self.price_box.setRange(0, 65535)
-        self.price_box.setAlignment(QtCore.Qt.AlignRight)
-        grid.addWidget(label, 0, 1)
-        grid.addWidget(self.price_box, 1, 1)
+        if self.version != GameID.ML1R or self.item_key not in ("SITM", "EITM", "BEAN"):
+            label = QtWidgets.QLabel("Price")
+            label.setAlignment(QtCore.Qt.AlignCenter)
+            self.price_box = QtWidgets.QSpinBox()
+            self.price_box.setRange(0, 0xFFFF)
+            if self.version in (GameID.ML5, GameID.ML4):
+                self.price_box.setRange(0, 0xFFFF)
+            self.price_box.setAlignment(QtCore.Qt.AlignRight)
+            self.bind_widget(self.price_box.valueChanged, self.set_price)
+            grid.addWidget(label, 0, 1)
+            grid.addWidget(self.price_box, 1, 1)
 
         # Sprite
         label = QtWidgets.QLabel("Sprite")
         label.setAlignment(QtCore.Qt.AlignCenter)
         self.sprite_box = QtWidgets.QSpinBox()
-        self.sprite_box.setRange(0, 255)
+        self.sprite_box.setRange(0, 0xFF)
         self.sprite_box.setAlignment(QtCore.Qt.AlignRight)
+        self.bind_widget(self.sprite_box.valueChanged, self.set_sprite)
         grid.addWidget(label, 0, 2)
         grid.addWidget(self.sprite_box, 1, 2)
 
@@ -158,11 +175,6 @@ class ItemDataTab(QtWidgets.QWidget):
         general_layout.addWidget(general_panel)
         layout.addWidget(general_section)
 
-        separator = QtWidgets.QFrame()
-        separator.setFrameShape(QtWidgets.QFrame.HLine)
-        separator.setFrameShadow(QtWidgets.QFrame.Sunken)
-        layout.addWidget(separator)
-
         properties = QtWidgets.QWidget()
         properties_layout = QtWidgets.QVBoxLayout(properties)
         properties_layout.setContentsMargins(0, 0, 0, 0)
@@ -172,7 +184,12 @@ class ItemDataTab(QtWidgets.QWidget):
         layout.addStretch()
 
         # Effects
-        if self._isItem() or self._isGear():
+        if self._hasEffect():
+            separator = QtWidgets.QFrame()
+            separator.setFrameShape(QtWidgets.QFrame.HLine)
+            separator.setFrameShadow(QtWidgets.QFrame.Sunken)
+            layout.addWidget(separator)
+            
             panel = QtWidgets.QWidget()
             grid = QtWidgets.QGridLayout(panel)
             grid.setContentsMargins(0, 0, 0, 0)
@@ -191,6 +208,7 @@ class ItemDataTab(QtWidgets.QWidget):
             self.effect_note.setWordWrap(True)
             self.effect_note.setFixedHeight(self.effect_note.fontMetrics().lineSpacing() * 2)
             self.effect_note.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+            self.bind_widget(self.effect_box.currentIndexChanged, self.set_effect)
             grid.addWidget(label, 0, 0, 1, 2)
             grid.addWidget(self.effect_box, 1, 0, 1, 2)
             grid.addWidget(self.effect_note, 2, 0, 1, 2)
@@ -210,11 +228,15 @@ class ItemDataTab(QtWidgets.QWidget):
                 label.setText("Effect Param 1")
             label.setAlignment(QtCore.Qt.AlignCenter)
             self.param1_box = QtWidgets.QSpinBox()
-            self.param1_box.setRange(0, 65535)
-            if self.version == GameID.ML3R and self._isGear():
-                self.param1_box.setRange(0, 255)
+            if self.version in (GameID.ML3R, GameID.ML1R, GameID.ML5):
+                self.param1_box.setRange(-0x8000, 0x7FFF)
+                if self.version == GameID.ML3R and self.item_key == "EITM":
+                    self.param1_box.setRange(0, 255)
+                elif self.version == GameID.ML5 and self.item_key == "EITM":
+                    self.param1_box.setRange(-0x80000000, 0x7FFFFFFF)
             self.param1_box.setMinimumWidth(100)
             self.param1_box.setAlignment(QtCore.Qt.AlignRight)
+            self.bind_widget(self.param1_box.valueChanged, self.set_effect_param1)
             self.param1_note = QtWidgets.QLabel()
             self.param1_note.setAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignTop)
             self.param1_note.setWordWrap(True)
@@ -233,11 +255,16 @@ class ItemDataTab(QtWidgets.QWidget):
                 label = QtWidgets.QLabel("Effect Param 2")
                 label.setAlignment(QtCore.Qt.AlignCenter)
                 self.param2_box = QtWidgets.QSpinBox()
-                self.param2_box.setRange(0, 65535)
-                if self.version == GameID.ML3R and self._isGear():
-                    self.param2_box.setRange(0, 255)
+                self.param2_box.setRange(0, 0xFFFF)
+                if self.version in (GameID.ML3R, GameID.ML1R, GameID.ML5):
+                    self.param2_box.setRange(-0x8000, 0x7FFF)
+                    if self.version == GameID.ML3R and self.item_key == "EITM":
+                        self.param2_box.setRange(0, 0xFF)
+                    elif self.version == GameID.ML5 and self.item_key == "EITM":
+                        self.param2_box.setRange(-0x80000000, 0x7FFFFFFF)
                 self.param2_box.setMinimumWidth(100)
                 self.param2_box.setAlignment(QtCore.Qt.AlignRight)
+                self.bind_widget(self.param2_box.valueChanged, self.set_effect_param2)
                 self.param2_note = QtWidgets.QLabel()
                 self.param2_note.setAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignTop)
                 self.param2_note.setWordWrap(True)
@@ -252,12 +279,13 @@ class ItemDataTab(QtWidgets.QWidget):
             grid.setRowMinimumHeight(3, 6)
             properties_layout.addWidget(panel)
 
+        
+        if self._hasStats():
             separator = QtWidgets.QFrame()
             separator.setFrameShape(QtWidgets.QFrame.HLine)
             separator.setFrameShadow(QtWidgets.QFrame.Sunken)
             properties_layout.addWidget(separator)
-
-        if self._isGear():
+            
             # Row 1
             panel = QtWidgets.QWidget()
             grid = QtWidgets.QGridLayout(panel)
@@ -282,12 +310,18 @@ class ItemDataTab(QtWidgets.QWidget):
             for column, (name, spinbox) in enumerate(stats):
                 label = QtWidgets.QLabel(name)
                 label.setAlignment(QtCore.Qt.AlignCenter)
-                spinbox.setRange(0, 65535)
+                spinbox.setRange(-0x8000, 0x7FFF)
                 spinbox.setAlignment(QtCore.Qt.AlignRight)
                 spinbox.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
                 grid.addWidget(label, 0, column)
                 grid.addWidget(spinbox, 1, column)
                 grid.setColumnStretch(column, 1)
+            self.bind_widget(self.hp_box.valueChanged, self.set_hp)
+            self.bind_widget(self.bp_box.valueChanged, self.set_bp)
+            self.bind_widget(self.pow_box.valueChanged, self.set_pow)
+            self.bind_widget(self.def_box.valueChanged, self.set_def)
+            self.bind_widget(self.spe_box.valueChanged, self.set_spe)
+            self.bind_widget(self.sta_box.valueChanged, self.set_sta)
             properties_layout.addWidget(panel)
             properties_layout.addSpacing(4)
 
@@ -302,23 +336,11 @@ class ItemDataTab(QtWidgets.QWidget):
                 label = QtWidgets.QLabel("Category")
                 label.setAlignment(QtCore.Qt.AlignCenter)
                 self.category_box = QtWidgets.QComboBox()
-                if self.version == GameID.ML3R:
-                    self.category_box.addItem("#0 - Wear", 0)
-                    self.category_box.addItem("#1 - Socks", 1)
-                    self.category_box.addItem("#2 - Gloves", 2)
-                    self.category_box.addItem("#3 - Boots", 3)
-                    self.category_box.addItem("#4 - Accessory", 4)
-                    self.category_box.addItem("#5 - Shell", 5)
-                    self.category_box.addItem("#6 - Bracelet", 6)
-                    self.category_box.addItem("#7 - Fangs", 7)
-                    self.category_box.addItem("#8 - Ring", 8)
-                elif self.version == GameID.ML5:
-                    self.category_box.addItem("#0 - Boot", 0)
-                    self.category_box.addItem("#1 - Hammer", 1)
-                    self.category_box.addItem("#2 - Wear", 2)
-                    self.category_box.addItem("#3 - Gloves", 3)
-                    self.category_box.addItem("#4 - Accessory", 4)
+                for category in self.category_presets:
+                    text = f"#{category['id']} - {category['name']}"
+                    self.category_box.addItem(text, category["id"])
                 self.category_box.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+                self.bind_widget(self.category_box.currentIndexChanged, self.set_category)
                 grid.addWidget(label, 0, 0)
                 grid.addWidget(self.category_box, 1, 0)
                 grid.setColumnStretch(0, 1)
@@ -328,24 +350,32 @@ class ItemDataTab(QtWidgets.QWidget):
                 grid.setColumnStretch(1, 2)
                 grid.setColumnStretch(2, 1)
 
-            label = QtWidgets.QLabel("User")
-            label.setAlignment(QtCore.Qt.AlignCenter)
-            self.user_box = QtWidgets.QComboBox()
-            self.user_box.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+            
             if self.version == GameID.ML3R:
+                label = QtWidgets.QLabel("User")
+                label.setAlignment(QtCore.Qt.AlignCenter)
+                self.user_box = QtWidgets.QComboBox()
+                self.user_box.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
                 self.user_box.addItem("Mario & Luigi", 0)
                 self.user_box.addItem("Bowser", 1)
-            elif self.version == GameID.ML1R:
-                self.user_box.addItem("No one", 0)
+                self.bind_widget(self.user_box.currentIndexChanged, self.set_user)
+                grid.addWidget(label, 0, 1)
+                grid.addWidget(self.user_box, 1, 1)
+            elif self.version == GameID.ML1R and self.item_key == "WITM":
+                label = QtWidgets.QLabel("User")
+                label.setAlignment(QtCore.Qt.AlignCenter)
+                self.user_box = QtWidgets.QComboBox()
+                self.user_box.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
                 self.user_box.addItem("Mario", 1)
                 self.user_box.addItem("Luigi", 2)
                 self.user_box.addItem("Both Bros.", 3)
-            grid.addWidget(label, 0, 1)
-            grid.addWidget(self.user_box, 1, 1)
+                self.bind_widget(self.user_box.currentIndexChanged, self.set_user)
+                grid.addWidget(label, 0, 1)
+                grid.addWidget(self.user_box, 1, 1)
 
             properties_layout.addWidget(panel)
         
-        if self.version == GameID.ML3R and self._isItem():
+        if self.version == GameID.ML3R and self.item_key == "UITM":
             # Row 1
             panel = QtWidgets.QWidget()
             grid = QtWidgets.QGridLayout(panel)
@@ -358,6 +388,7 @@ class ItemDataTab(QtWidgets.QWidget):
             self.pocket_box = QtWidgets.QComboBox()
             self.pocket_box.addItem("Mushroom Pocket (Battle)", 1)
             self.pocket_box.addItem("Bean Pocket (Menu Only)", 0)
+            self.bind_widget(self.pocket_box.currentIndexChanged, self.set_pocket)
             grid.addWidget(label, 0, 0)
             grid.addWidget(self.pocket_box, 1, 0)
 
@@ -367,6 +398,7 @@ class ItemDataTab(QtWidgets.QWidget):
             for condition in self.condition_presets:
                 text = f"#{condition['id']} - {condition['name']}"
                 self.condition_box.addItem(text, condition["id"])
+            self.bind_widget(self.condition_box.currentIndexChanged, self.set_condition)
             grid.addWidget(label, 0, 1)
             grid.addWidget(self.condition_box, 1, 1)
             
@@ -389,6 +421,7 @@ class ItemDataTab(QtWidgets.QWidget):
             self.user_box.addItem("Bros. only", 1)
             self.user_box.addItem("Bowser only", 2)
             self.user_box.addItem("No one", 3)
+            self.bind_widget(self.user_box.currentIndexChanged, self.set_user)
             grid.addWidget(label, 0, 0)
             grid.addWidget(self.user_box, 1, 0)
 
@@ -397,6 +430,7 @@ class ItemDataTab(QtWidgets.QWidget):
             self.multitarget_box = QtWidgets.QComboBox()
             self.multitarget_box.addItem("Single-target", 0)
             self.multitarget_box.addItem("Multi-target", 1)
+            self.bind_widget(self.multitarget_box.currentIndexChanged, self.set_multitarget)
             grid.addWidget(label, 0, 1)
             grid.addWidget(self.multitarget_box, 1, 1)
            
@@ -414,6 +448,8 @@ class ItemDataTab(QtWidgets.QWidget):
 
             self.usemenu_box = QtWidgets.QCheckBox("Useable from the menu")
             self.mushroom_box = QtWidgets.QCheckBox("Mushroom?")
+            self.bind_widget(self.mushroom_box.toggled, self.set_mushroom)
+            self.bind_widget(self.usemenu_box.toggled, self.set_usemenu)
             grid.addWidget(self.usemenu_box, 0, 0)
             grid.addWidget(self.mushroom_box, 0, 1)
             
@@ -422,7 +458,7 @@ class ItemDataTab(QtWidgets.QWidget):
             properties_layout.setSpacing(10)
             properties_layout.addWidget(panel)
 
-        if self.version == GameID.ML1R and self._isItem():
+        if self.version == GameID.ML1R and self.item_key == "UITM":
             # Row 1
             panel = QtWidgets.QWidget()
             grid = QtWidgets.QGridLayout(panel)
@@ -435,6 +471,7 @@ class ItemDataTab(QtWidgets.QWidget):
             self.pocket_box = QtWidgets.QComboBox()
             self.pocket_box.addItem("Mushroom Pocket (Battle)", 1)
             self.pocket_box.addItem("Blend Pocket (Menu Only)", 0)
+            self.bind_widget(self.pocket_box.currentIndexChanged, self.set_pocket)
             grid.addWidget(label, 0, 0)
             grid.addWidget(self.pocket_box, 1, 0)
 
@@ -444,6 +481,7 @@ class ItemDataTab(QtWidgets.QWidget):
             for condition in self.condition_presets:
                 text = f"#{condition['id']} - {condition['name']}"
                 self.condition_box.addItem(text, condition["id"])
+            self.bind_widget(self.condition_box.currentIndexChanged, self.set_condition)
             grid.addWidget(label, 0, 1)
             grid.addWidget(self.condition_box, 1, 1)
             
@@ -464,14 +502,16 @@ class ItemDataTab(QtWidgets.QWidget):
             self.multitarget_box = QtWidgets.QComboBox()
             self.multitarget_box.addItem("Single-target", 0)
             self.multitarget_box.addItem("Multi-target", 1)
+            self.bind_widget(self.multitarget_box.currentIndexChanged, self.set_multitarget)
             grid.addWidget(label, 0, 0)
             grid.addWidget(self.multitarget_box, 1, 0)
 
             label = QtWidgets.QLabel("Unknown")
             label.setAlignment(QtCore.Qt.AlignCenter)
             self.mushstat_box = QtWidgets.QSpinBox()
-            self.mushstat_box.setRange(0, 255)
+            self.mushstat_box.setRange(0, 0xFF)
             self.mushstat_box.setAlignment(QtCore.Qt.AlignRight)
+            self.bind_widget(self.mushstat_box.valueChanged, self.set_mushstat)
             grid.addWidget(label, 0, 1)
             grid.addWidget(self.mushstat_box, 1, 1)
 
@@ -488,6 +528,7 @@ class ItemDataTab(QtWidgets.QWidget):
             grid.setVerticalSpacing(2)
 
             self.usemenu_box = QtWidgets.QCheckBox("Useable from the menu")
+            self.bind_widget(self.usemenu_box.toggled, self.set_usemenu)
             grid.addWidget(self.usemenu_box, 0, 0)
             
             grid.setColumnStretch(0, 1)
@@ -495,7 +536,7 @@ class ItemDataTab(QtWidgets.QWidget):
             properties_layout.setSpacing(10)
             properties_layout.addWidget(panel)
 
-        if self.version == GameID.ML5 and self._isItem():
+        if self.version == GameID.ML5 and self.item_key == "UITM":
             # Row 1
             panel = QtWidgets.QWidget()
             grid = QtWidgets.QGridLayout(panel)
@@ -513,6 +554,8 @@ class ItemDataTab(QtWidgets.QWidget):
 
             self.mushroom_box = QtWidgets.QCheckBox("Mushroom")
             self.bean_box = QtWidgets.QCheckBox("Bean")
+            self.bind_widget(self.mushroom_box.toggled, self.set_mushroom)
+            self.bind_widget(self.bean_box.toggled, self.set_bean)
             grid.addWidget(self.mushroom_box, 1, 1)
             grid.addWidget(self.bean_box, 1, 2)
 
@@ -532,6 +575,9 @@ class ItemDataTab(QtWidgets.QWidget):
             self.usemenu_box = QtWidgets.QCheckBox("Useable (Menu)")
             self.usebattle_box = QtWidgets.QCheckBox("Useable (Battle)")
             self.usering_box = QtWidgets.QCheckBox("Useable (Arcade)")
+            self.bind_widget(self.usering_box.toggled, self.set_usegauntlet)
+            self.bind_widget(self.usebattle_box.toggled, self.set_usebattle)
+            self.bind_widget(self.usemenu_box.toggled, self.set_usemenu)
             grid.addWidget(self.usemenu_box, 1, 0)
             grid.addWidget(self.usebattle_box, 1, 1)
             grid.addWidget(self.usering_box, 1, 2)
@@ -555,16 +601,18 @@ class ItemDataTab(QtWidgets.QWidget):
             for condition in self.condition_presets:
                 text = f"#{condition['id']} - {condition['name']}"
                 self.condition_box.addItem(text, condition["id"])
+            self.bind_widget(self.condition_box.currentIndexChanged, self.set_condition)
             grid.addWidget(label, 0, 0)
             grid.addWidget(self.condition_box, 1, 0)
 
-            label = QtWidgets.QLabel("Playable Target")
+            label = QtWidgets.QLabel("Consumable by")
             label.setAlignment(QtCore.Qt.AlignCenter)
             self.user_box = QtWidgets.QComboBox()
             self.user_box.addItem("Any Bros.", 0)
             self.user_box.addItem("Mario & Luigi only", 1)
             self.user_box.addItem("Paper Mario only", 2)
             self.user_box.addItem("No one", 3)
+            self.bind_widget(self.user_box.currentIndexChanged, self.set_user)
             grid.addWidget(label, 0, 1)
             grid.addWidget(self.user_box, 1, 1)
 
@@ -577,10 +625,12 @@ class ItemDataTab(QtWidgets.QWidget):
             grid.setContentsMargins(0, 0, 0, 0)
             grid.setHorizontalSpacing(8)
             grid.setVerticalSpacing(2)
-            
             self.multitarget_box = QtWidgets.QCheckBox("Multi-Target")
             self.targetenemy_box = QtWidgets.QCheckBox("Targets Enemies")
             self.targetback_box = QtWidgets.QCheckBox("Targets BG Enemies")
+            self.bind_widget(self.multitarget_box.toggled, self.set_multitarget)
+            self.bind_widget(self.targetenemy_box.toggled, self.set_targetenemy)
+            self.bind_widget(self.targetback_box.toggled, self.set_targetback)
             grid.addWidget(self.multitarget_box, 0, 0)
             grid.addWidget(self.targetenemy_box, 0, 1)
             grid.addWidget(self.targetback_box, 0, 2)
@@ -702,49 +752,6 @@ class ItemDataTab(QtWidgets.QWidget):
             properties_layout.addWidget(strings)
 
         
-        # Item List
-        self.item_list.currentItemChanged.connect(self.on_item_selected)
-        # General
-        self.bind_widget(self.price_box.valueChanged, self.set_price)
-        self.bind_widget(self.sprite_box.valueChanged, self.set_sprite)
-        # Effect
-        self.bind_widget(self.effect_box.currentIndexChanged, self.set_effect)
-        self.bind_widget(self.param1_box.valueChanged, self.set_effect_param1)
-        if self._effectParam2():
-            self.bind_widget(self.param2_box.valueChanged, self.set_effect_param2)
-        # Gear
-        if self._isGear():
-            self.bind_widget(self.hp_box.valueChanged, self.set_hp)
-            self.bind_widget(self.bp_box.valueChanged, self.set_bp)
-            self.bind_widget(self.pow_box.valueChanged, self.set_pow)
-            self.bind_widget(self.def_box.valueChanged, self.set_def)
-            self.bind_widget(self.spe_box.valueChanged, self.set_spe)
-            self.bind_widget(self.sta_box.valueChanged, self.set_sta)
-        # Flags
-        if self.version == GameID.ML3R and self._isItem():
-            self.bind_widget(self.pocket_box.currentIndexChanged, self.set_pocket)
-            self.bind_widget(self.condition_box.currentIndexChanged, self.set_condition)
-            self.bind_widget(self.user_box.currentIndexChanged, self.set_user)
-            self.bind_widget(self.multitarget_box.currentIndexChanged, self.set_multitarget)
-            self.bind_widget(self.usemenu_box.toggled, self.set_usemenu)
-            self.bind_widget(self.mushroom_box.toggled, self.set_mushroom)
-        elif self.version == GameID.ML1R and self._isItem():
-            self.bind_widget(self.pocket_box.currentIndexChanged, self.set_pocket)
-            self.bind_widget(self.condition_box.currentIndexChanged, self.set_condition)
-            self.bind_widget(self.multitarget_box.currentIndexChanged, self.set_multitarget)
-            self.bind_widget(self.usemenu_box.toggled, self.set_usemenu)
-            self.bind_widget(self.mushstat_box.valueChanged, self.set_mushstat)
-        elif self.version == GameID.ML5 and self._isItem():
-            self.bind_widget(self.usemenu_box.toggled, self.set_usemenu)
-            self.bind_widget(self.usebattle_box.toggled, self.set_usebattle)
-            self.bind_widget(self.usering_box.toggled, self.set_usegauntlet)
-            self.bind_widget(self.mushroom_box.toggled, self.set_mushroom)
-            self.bind_widget(self.bean_box.toggled, self.set_bean)
-            self.bind_widget(self.multitarget_box.toggled, self.set_multitarget)
-            self.bind_widget(self.targetenemy_box.toggled, self.set_targetenemy)
-            self.bind_widget(self.targetback_box.toggled, self.set_targetback)
-            self.bind_widget(self.condition_box.currentIndexChanged, self.set_condition)
-            self.bind_widget(self.user_box.currentIndexChanged, self.set_user)
         # String labels
         self.bind_widget(self.name_string_label.textChanged, self.set_name_label)
         self.bind_widget(self.plural_string_label.textChanged, self.set_nams_label)
@@ -793,54 +800,89 @@ class ItemDataTab(QtWidgets.QWidget):
             return
         self._refreshing = True
         try:
-            # Effects
-            self.refresh_effect_form(item)
-            # Properties
-            self.id_box.setText(f"{item.id:X}" if item.id is not None else "")
-            self.sprite_box.setValue(item.sprite or 0)
-            self.price_box.setValue(item.price or 0)
-            # Gear
-            if self._isGear():
-                self.hp_box.setValue(item.hp or 0)
-                self.bp_box.setValue(item.bp or 0)
-                self.pow_box.setValue(item.pwr or 0)
-                self.def_box.setValue(item.dfn or 0)
-                self.spe_box.setValue(item.spe or 0)
-                self.sta_box.setValue(item.sta or 0)
-            # Flags
-            if self.version == GameID.ML3R and self._isItem():
-                self.usemenu_box.setChecked(item.flags1[5])
-                self.mushroom_box.setChecked(item.flags1[7])
-                self.pocket_box.setCurrentIndex(self.pocket_box.findData(1 if item.flags1[6] else 0))
-                self.multitarget_box.setCurrentIndex(self.multitarget_box.findData(1 if item.flags2[0] else 0))
-                condition_id = sum(int(flag) << bit for bit, flag in enumerate(item.flags1[:4]))
-                self.condition_box.setCurrentIndex(max(self.condition_box.findData(condition_id), 0))
-                user_id = int(item.flags2[1]) | (int(item.flags2[2]) << 1)
-                self.user_box.setCurrentIndex(max(self.user_box.findData(user_id), 0))
-            elif self.version == GameID.ML1R and self._isItem():
-                self.mushstat_box.setValue(item.unk1 or 0)
-                self.usemenu_box.setChecked(item.flags1[5])
-                self.pocket_box.setCurrentIndex(self.pocket_box.findData(1 if item.flags1[6] else 0))
-                self.multitarget_box.setCurrentIndex(self.multitarget_box.findData(1 if item.flags1[7] else 0))
-                condition_id = sum(int(flag) << bit for bit, flag in enumerate(item.flags1[:4]))
-                self.condition_box.setCurrentIndex(max(self.condition_box.findData(condition_id), 0))
-            elif self.version == GameID.ML5 and self._isItem():
-                self.pocket_box.setText(self.get_pocket(item))
-                self.usemenu_box.setChecked(item.flags1[0])
-                self.usebattle_box.setChecked(item.flags1[1])
-                self.usering_box.setChecked(item.flags1[2])
-                self.mushroom_box.setChecked(item.flags2[0])
-                self.bean_box.setChecked(item.flags2[1])
-                self.multitarget_box.setChecked(item.flags1[6])
-                self.targetenemy_box.setChecked(item.flags1[5])
-                self.targetback_box.setChecked(item.flags1[7])
-                condition_id = sum(int(flag) << bit for bit, flag in enumerate(item.flags2[2:6]))
-                self.condition_box.setCurrentIndex(max(self.condition_box.findData(condition_id), 0))
-                user_id = int(item.flags1[3]) | (int(item.flags1[4]) << 1)
-                self.user_box.setCurrentIndex(max(self.user_box.findData(user_id), 0))
+            if self.version == GameID.ML3R:
+                self.refresh_ML3R(item)
+            elif self.version == GameID.ML1R:
+                self.refresh_ML1R(item)
+            elif self.version == GameID.ML5:
+                self.refresh_ML5(item)
+                
             self.refresh_strings()
         finally:
             self._refreshing = False
+
+    def refresh_ML3R(self, item):
+        self.refresh_effect_form(item)
+        self.id_box.setText(f"{item.id:X}" if item.id is not None else "")
+        self.sprite_box.setValue(item.sprite or 0)
+        self.price_box.setValue(item.price or 0)
+        if self.item_key == "UITM":
+            self.usemenu_box.setChecked(item.use_menu)
+            self.mushroom_box.setChecked(item.is_mushroom)
+            self.pocket_box.setCurrentIndex(self.pocket_box.findData(1 if item.mushroom_pocket else 0))
+            self.multitarget_box.setCurrentIndex(self.multitarget_box.findData(1 if item.target_multi else 0))
+            self.condition_box.setCurrentIndex(max(self.condition_box.findData(item.use_condition), 0))
+            self.user_box.setCurrentIndex(max(self.user_box.findData(item.user), 0))
+        elif self.item_key == "EITM":
+            self.hp_box.setValue(item.hp or 0)
+            self.bp_box.setValue(item.bp or 0)
+            self.pow_box.setValue(item.pwr or 0)
+            self.def_box.setValue(item.dfn or 0)
+            self.spe_box.setValue(item.spe or 0)
+            self.sta_box.setValue(item.sta or 0)
+            self.user_box.setCurrentIndex(max(self.user_box.findData(item.user), 0))
+            self.category_box.setCurrentIndex(max(self.category_box.findData(item.type), 0))
+
+    def refresh_ML1R(self, item):
+        self.id_box.setText(f"{item.id:X}" if item.id is not None else "")
+        self.sprite_box.setValue(item.sprite or 0)
+        if self.item_key == "UITM":
+            self.refresh_effect_form(item)
+            self.price_box.setValue(item.price or 0)
+            self.mushstat_box.setValue(item.unk1 or 0)
+            self.usemenu_box.setChecked(item.use_menu)
+            self.pocket_box.setCurrentIndex(self.pocket_box.findData(1 if item.mushroom_pocket else 0))
+            self.multitarget_box.setCurrentIndex(self.multitarget_box.findData(1 if item.target_multi else 0))
+            self.condition_box.setCurrentIndex(max(self.condition_box.findData(item.use_condition), 0))
+        elif self.item_key in ("WITM", "BITM"):
+            self.refresh_effect_form(item)
+            self.price_box.setValue(item.price or 0)
+            self.hp_box.setValue(item.hp or 0)
+            self.bp_box.setValue(item.bp or 0)
+            self.pow_box.setValue(item.pwr or 0)
+            self.def_box.setValue(item.dfn or 0)
+            self.spe_box.setValue(item.spe or 0)
+            self.sta_box.setValue(item.sta or 0)
+            if self.item_key == "WITM":
+                self.user_box.setCurrentIndex(max(self.user_box.findData(item.user), 0))
+
+    def refresh_ML5(self, item):
+        self.refresh_effect_form(item)
+        self.id_box.setText(f"{item.id:X}" if item.id is not None else "")
+        self.sprite_box.setValue(item.sprite or 0)
+        self.price_box.setValue(item.price or 0)
+        if self.item_key == "UITM":
+            self.pocket_box.setText(self.get_pocket(item))
+            self.usemenu_box.setChecked(item.use_menu)
+            self.usebattle_box.setChecked(item.use_battle)
+            self.usering_box.setChecked(item.use_arcade)
+            self.mushroom_box.setChecked(item.is_mushroom)
+            self.bean_box.setChecked(item.is_bean)
+            self.multitarget_box.setChecked(item.target_multi)
+            self.targetenemy_box.setChecked(item.target_enemy)
+            self.targetback_box.setChecked(item.target_back)
+            self.condition_box.setCurrentIndex(max(self.condition_box.findData(item.use_condition), 0))
+            self.user_box.setCurrentIndex(max(self.user_box.findData(item.user), 0))
+        elif self.item_key == "EITM":
+            self.hp_box.setValue(item.hp or 0)
+            self.bp_box.setValue(item.bp or 0)
+            self.pow_box.setValue(item.pwr or 0)
+            self.def_box.setValue(item.dfn or 0)
+            self.spe_box.setValue(item.spe or 0)
+            self.sta_box.setValue(item.sta or 0)
+            self.user_box.setCurrentIndex(max(self.user_box.findData(item.user), 0))
+            self.category_box.setCurrentIndex(max(self.category_box.findData(item.type), 0))
+
 
     def refresh_effect_form(self, item):
         effect_id = item.effect_id
@@ -900,17 +942,17 @@ class ItemDataTab(QtWidgets.QWidget):
         value = self.pocket_box.itemData(index)
         if value is None:
             return
-        item.flags1[6] = bool(value)
+        item.mushroom_pocket = bool(value)
 
     def get_pocket(self, item):
-        if item.flags2[0]:
+        if item.is_mushroom:
             return "Mushroom"
         # TODO: For the sprites, the game looks for matching sprites from items UITM_nut/UITM_sirup/UITM_candy
         if item.sprite == 4:
             return "Nut"
         if item.sprite in (6, 8):
             return "Syrup"
-        if item.flags2[1]:
+        if item.is_bean:
             return "Bean"
         return "Other"
 
@@ -918,71 +960,51 @@ class ItemDataTab(QtWidgets.QWidget):
         condition_id = self.condition_box.itemData(index)
         if condition_id is None:
             return
-        if self.version in (GameID.ML3R, GameID.ML1R):
-            for bit in range(4):
-                item.flags1[bit] = bool(condition_id & (1 << bit))
-        elif self.version == GameID.ML5:
-            for bit in range(4):
-                item.flags2[bit + 2] = bool(condition_id & (1 << bit))
+        item.use_condition = condition_id
 
     def set_multitarget(self, item, index):
         # Combobox
-        if self.version == GameID.ML3R:
+        if self.version in (GameID.ML3R, GameID.ML1R):
             value = self.multitarget_box.itemData(index)
             if value is None:
                 return
-            item.flags2[0] = bool(value)
-        elif self.version == GameID.ML1R:
-            value = self.multitarget_box.itemData(index)
-            if value is None:
-                return
-            item.flags1[7] = bool(value)
+            item.target_multi = bool(value)
         # Checkbox
         elif self.version == GameID.ML5:
-            item.flags1[6] = index
+            item.target_multi = index
 
-    def set_targetenemy(self, item, index):
-        if self.version == GameID.ML5:
-            item.flags1[5] = index
+    def set_targetenemy(self, item, checked):
+        item.target_enemy = checked
 
-    def set_targetback(self, item, index):
-        if self.version == GameID.ML5:
-            item.flags1[7] = index
+    def set_targetback(self, item, checked):
+        item.target_back = checked
 
     def set_user(self, item, index):
         user_id = self.user_box.itemData(index)
         if user_id is None:
             return
-        if self.version == GameID.ML3R:
-            item.flags2[1] = bool(user_id & 1)
-            item.flags2[2] = bool(user_id & 2)
-        elif self.version == GameID.ML5:
-            item.flags1[3] = bool(user_id & 1)
-            item.flags1[4] = bool(user_id & 2)
+        item.user = user_id
+
+    def set_category(self, item, index):
+        type_id = self.category_box.itemData(index)
+        if type_id is None:
+            return
+        item.type = type_id
 
     def set_usemenu(self, item, checked):
-        if self.version == GameID.ML3R:
-            item.flags1[5] = checked
-        elif self.version == GameID.ML5:
-            item.flags1[0] = checked
+        item.use_menu = checked
 
     def set_usebattle(self, item, checked):
-        if self.version == GameID.ML5:
-            item.flags1[1] = checked
+        item.use_battle = checked
 
     def set_usegauntlet(self, item, checked):
-        if self.version == GameID.ML5:
-            item.flags1[2] = checked
+        item.use_arcade = checked
 
     def set_mushroom(self, item, checked):
-        if self.version == GameID.ML3R:
-            item.flags1[7] = checked
-        elif self.version == GameID.ML5:
-            item.flags2[0] = checked
+        item.is_mushroom = checked
 
     def set_bean(self, item, checked):
-        if self.version == GameID.ML5:
-            item.flags2[1] = checked
+        item.is_bean = checked
 
     def set_hp(self, item, value):
         item.hp = value
@@ -1075,11 +1097,17 @@ class ItemDataTab(QtWidgets.QWidget):
     def _isItem(self):
         return (self.item_key == "UITM")
 
-    def _isGear(self):
+    def _hasEffect(self):
         if self.version == GameID.ML1R:
-            return (self.item_key in ("WITM", "BITM", "SITM"))
+            return (self.item_key in ("UITM", "WITM", "BITM", "SITM"))
         elif self.version in (GameID.ML5, GameID.ML3R):
-            return (self.item_key in ("EITM", "CITM"))
+            return (self.item_key in ("UITM", "EITM", "BITM", "CITM"))
+
+    def _hasStats(self):
+        if self.version == GameID.ML1R:
+            return (self.item_key in ("WITM", "BITM"))
+        elif self.version in (GameID.ML5, GameID.ML3R):
+            return (self.item_key == "EITM")
 
     def _effectParam2(self):
         if self.version == GameID.ML1R:

@@ -54,7 +54,7 @@ struct Item {
     0x60: u32, Sprite ID*
     0x64: u16, Price
     0x66: u16, Effect ID*
-    0x68: u16, Effect Parameter
+    0x68: s16, Effect Parameter
     0x6A-0x6B: bitflags, Usability Flags*
 }
 ```
@@ -105,12 +105,12 @@ struct Gear {
     0x69: u8, Effect Parameter 2
     0x6A: u8, Gear Category
     0x6B: u8, User (0=Bros | 1=Bowser)
-    0x6C: u16, HP
-    0x6E: u16, BP
-    0x70: u16, POW
-    0x72: u16, DEF
-    0x74: u16, SPEED
-    0x76: u16, STACHE/HORN
+    0x6C: s16, HP
+    0x6E: s16, BP
+    0x70: s16, POW
+    0x72: s16, DEF
+    0x74: s16, SPEED
+    0x76: s16, STACHE/HORN
 }
 ```
 The Gear's ID is defined by the prefix `2xxx` and its position in the list. For example, the first entry, Thin Wear, would have ID `0x2000`, and Picnic Wear `0x2001`.

@@ -191,7 +191,13 @@ def fix_msbt_data(raw_data: bytes) -> bytes:
 def parse_msbt_bytes(raw_data: bytes, filename: str) -> dict:
     raw_data = fix_msbt_data(raw_data)
     document = pymsbmnl.msbt_from_buffer(PostPJLMSAdapter, raw_data)
-    return {"filename": filename, "data": [{"key": msg.label, "value": remove_tags(msg.text)} for msg in document.messages]}
+    return {
+        "filename": filename,
+        "data": {
+            msg.label: remove_tags(msg.text)
+            for msg in document.messages
+        },
+    }
 
 def parse_msbt(path: str) -> dict:
     with open(path, "rb") as f:
