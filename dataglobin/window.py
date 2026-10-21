@@ -106,6 +106,8 @@ class MainWindow(QtWidgets.QMainWindow):
             main.addTab(self.tab_item_data, "&Item Data")
             self.tab_gear_data = ItemDataTab(self, item_key="EITM")
             main.addTab(self.tab_gear_data, "&Gear Data")
+            self.tab_card_data = ItemDataTab(self, item_key="CITM")
+            main.addTab(self.tab_card_data, "&Card Data")
             self.tab_hash_table = HashTableTab(self)
             main.addTab(self.tab_hash_table, "&Hash Tables")
 

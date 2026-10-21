@@ -1,5 +1,4 @@
 import sys
-import json
 from enum import Enum
 from pathlib import Path
 
@@ -10,9 +9,7 @@ from dataglobin.constants import GameID, Language
 
 LAST_VERSION = Constants.DEFAULT_VERSION
 
-# Dataglobin-DX UI language
 UI_LANGUAGE = Language.US_EN
-# Language used for the item name lists
 UI_DB_LANGUAGE = None
 
 ML3R_ROMFS_INPUT = None
@@ -24,63 +21,63 @@ ML1R_ROMFS_OUTPUT = None
 ML5_ROMFS_INPUT = None
 ML5_ROMFS_OUTPUT = None
 
-CONFIG_PATH = Path(
-    QtCore.QStandardPaths.writableLocation(
-        QtCore.QStandardPaths.StandardLocation.AppConfigLocation
-    )
-) / "config.json"
-
-def _serialize(value):
-    if isinstance(value, Enum):
-        return {"__enum__": value.__class__.__name__, "name": value.name}
-    if isinstance(value, Path):
-        return str(value)
-    return value
-
-def _deserialize(value):
-    if isinstance(value, dict) and "__enum__" in value:
-        enum_classes = {
-            cls.__name__: cls
-            for cls in (GameID, Language)
-        }
-        enum_cls = enum_classes[value["__enum__"]]
-        return enum_cls[value["name"]]
-    return value
 
 def get_config_path() -> Path:
     if getattr(sys, "frozen", False):
-        return Path(sys.executable).parent / "config.json"
-    return Path(
-        QtCore.QStandardPaths.writableLocation(
-            QtCore.QStandardPaths.StandardLocation.AppConfigLocation
-        )
-    ) / "config.json"
-
-def export_config():
-    config = {
-        "LAST_VERSION": _serialize(LAST_VERSION),
-        
-        "ML5_ROMFS_INPUT": _serialize(ML5_ROMFS_INPUT),
-        "ML5_ROMFS_OUTPUT": _serialize(ML5_ROMFS_OUTPUT),
-
-        "ML1R_ROMFS_INPUT": _serialize(ML1R_ROMFS_INPUT),
-        "ML1R_ROMFS_OUTPUT": _serialize(ML1R_ROMFS_OUTPUT),
-
-        "ML3R_ROMFS_INPUT": _serialize(ML3R_ROMFS_INPUT),
-        "ML3R_ROMFS_OUTPUT": _serialize(ML3R_ROMFS_OUTPUT),
-    }
-    config_path = get_config_path()
-    config_path.parent.mkdir(parents=True, exist_ok=True)
-    config_path.write_text(
-        json.dumps(config, indent=4),
-        encoding="utf-8",
+        return Path(sys.executable).resolve().parent / "config.ini"
+    return (
+        Path(QtCore.QStandardPaths.writableLocation(QtCore.QStandardPaths.StandardLocation.AppConfigLocation))
+        / "config.ini"
     )
 
-def import_config():
-    config_path = get_config_path()
-    if not config_path.exists():
-        return
-    config = json.loads(config_path.read_text(encoding="utf-8"))
-    for name, value in config.items():
-        if name.isupper() and name in globals():
-            globals()[name] = _deserialize(value)
+def export_config() -> None:
+    settings = QtCore.QSettings(str(get_config_path()), QtCore.QSettings.Format.IniFormat)
+    config = {
+        "LAST_VERSION": LAST_VERSION,
+        "ML5_ROMFS_INPUT": ML5_ROMFS_INPUT,
+        "ML5_ROMFS_OUTPUT": ML5_ROMFS_OUTPUT,
+        "ML1R_ROMFS_INPUT": ML1R_ROMFS_INPUT,
+        "ML1R_ROMFS_OUTPUT": ML1R_ROMFS_OUTPUT,
+        "ML3R_ROMFS_INPUT": ML3R_ROMFS_INPUT,
+        "ML3R_ROMFS_OUTPUT": ML3R_ROMFS_OUTPUT,
+    }
+    for key, value in config.items():
+        if value is None:
+            value = ""
+        elif isinstance(value, Enum):
+            value = value.name
+        elif isinstance(value, Path):
+            value = str(value)
+        settings.setValue(key, value)
+    settings.sync()
+
+def import_config() -> None:
+    global LAST_VERSION
+    global ML5_ROMFS_INPUT, ML5_ROMFS_OUTPUT
+    global ML1R_ROMFS_INPUT, ML1R_ROMFS_OUTPUT
+    global ML3R_ROMFS_INPUT, ML3R_ROMFS_OUTPUT
+
+    settings = QtCore.QSettings(str(get_config_path()), QtCore.QSettings.Format.IniFormat)
+
+    def read(key, default=None, converter=None):
+        value = settings.value(key, default)
+        if converter is Path:
+            return Path(value) if value else None
+        if isinstance(converter, type) and issubclass(converter, Enum):
+            if isinstance(value, converter):
+                return value
+            if not value:
+                return default
+            return converter[value]
+        return value
+
+    LAST_VERSION = read("LAST_VERSION", Constants.DEFAULT_VERSION, GameID)
+
+    ML5_ROMFS_INPUT = read("ML5_ROMFS_INPUT", converter=Path)
+    ML5_ROMFS_OUTPUT = read("ML5_ROMFS_OUTPUT", converter=Path)
+
+    ML1R_ROMFS_INPUT = read("ML1R_ROMFS_INPUT", converter=Path)
+    ML1R_ROMFS_OUTPUT = read("ML1R_ROMFS_OUTPUT", converter=Path)
+
+    ML3R_ROMFS_INPUT = read("ML3R_ROMFS_INPUT", converter=Path)
+    ML3R_ROMFS_OUTPUT = read("ML3R_ROMFS_OUTPUT", converter=Path)

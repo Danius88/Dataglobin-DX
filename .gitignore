@@ -175,6 +175,9 @@ poetry.toml
 
 # End of https://www.toptal.com/developers/gitignore/api/python
 
+# Visual Studio Code
+.vscode/
+
 # NDS files
 *.nds
 *.sav

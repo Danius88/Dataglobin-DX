@@ -66,10 +66,9 @@ class ItemDataTab(QtWidgets.QWidget):
         buttons.setContentsMargins(0, 0, 0, 0)
         buttons.setSpacing(2)
 
-        for text in ("↑", "↓", "+", "-"):
+        for text in ("↑", "↓"):
             button = QtWidgets.QPushButton(text)
             button.setFixedSize(24, 24)
-            buttons.addWidget(button)
 
         buttons.addStretch()
 
@@ -86,7 +85,6 @@ class ItemDataTab(QtWidgets.QWidget):
         list_layout.addWidget(separator)
 
         label = QtWidgets.QLabel("Display Order")
-
         row = QtWidgets.QHBoxLayout()
         row.setContentsMargins(0, 0, 0, 0)
 
@@ -95,24 +93,32 @@ class ItemDataTab(QtWidgets.QWidget):
         buttons = QtWidgets.QVBoxLayout()
         buttons.setContentsMargins(0, 0, 0, 0)
         buttons.setSpacing(2)
-
         self.display_order_up = QtWidgets.QPushButton("↑")
         self.display_order_down = QtWidgets.QPushButton("↓")
-
+        buttons.addStretch()
         for button in (self.display_order_up, self.display_order_down):
             button.setFixedSize(24, 24)
             buttons.addWidget(button)
-
         buttons.addStretch()
 
+        self.display_order_add = QtWidgets.QPushButton("Add entry")
+        self.display_order_remove = QtWidgets.QPushButton("Delete entry")
+        self.display_order_add.clicked.connect(self.add_display_order_item)
+        self.display_order_remove.clicked.connect(self.remove_display_order_item)
         self.display_order_up.clicked.connect(lambda: self.move_display_order_item(-1))
         self.display_order_down.clicked.connect(lambda: self.move_display_order_item(1))
 
         row.addWidget(self.display_order)
         row.addLayout(buttons)
-
         list_layout.addWidget(label)
         list_layout.addLayout(row)
+
+        order_actions = QtWidgets.QHBoxLayout()
+        order_actions.setContentsMargins(0, 0, 0, 0)
+        order_actions.setSpacing(4)
+        order_actions.addWidget(self.display_order_add)
+        order_actions.addWidget(self.display_order_remove)
+        list_layout.addLayout(order_actions)
 
         main_layout.addWidget(list_area)
 
@@ -180,16 +186,16 @@ class ItemDataTab(QtWidgets.QWidget):
         properties_layout.setContentsMargins(0, 0, 0, 0)
         properties_layout.setSpacing(4)
 
+        separator = QtWidgets.QFrame()
+        separator.setFrameShape(QtWidgets.QFrame.HLine)
+        separator.setFrameShadow(QtWidgets.QFrame.Sunken)
+        if self._hasEffect():
+            layout.addWidget(separator)
         layout.addWidget(properties)
         layout.addStretch()
 
         # Effects
         if self._hasEffect():
-            separator = QtWidgets.QFrame()
-            separator.setFrameShape(QtWidgets.QFrame.HLine)
-            separator.setFrameShadow(QtWidgets.QFrame.Sunken)
-            layout.addWidget(separator)
-            
             panel = QtWidgets.QWidget()
             grid = QtWidgets.QGridLayout(panel)
             grid.setContentsMargins(0, 0, 0, 0)
@@ -277,15 +283,15 @@ class ItemDataTab(QtWidgets.QWidget):
 
             grid.addLayout(params_layout, 4, 0, 1, 2)
             grid.setRowMinimumHeight(3, 6)
-            properties_layout.addWidget(panel)
 
+            properties_layout.addWidget(panel)
         
         if self._hasStats():
             separator = QtWidgets.QFrame()
             separator.setFrameShape(QtWidgets.QFrame.HLine)
-            separator.setFrameShadow(QtWidgets.QFrame.Sunken)
+            separator.setFrameShadow(QtWidgets.QFrame.Sunken)     
             properties_layout.addWidget(separator)
-            
+
             # Row 1
             panel = QtWidgets.QWidget()
             grid = QtWidgets.QGridLayout(panel)
@@ -784,6 +790,7 @@ class ItemDataTab(QtWidgets.QWidget):
         if self.item_list.count():
             self.item_list.setCurrentRow(0)
             self.refresh_form()
+        self.update_display_order_buttons()
 
     def get_current_item(self):
         entry = self.item_list.currentItem()
@@ -793,6 +800,7 @@ class ItemDataTab(QtWidgets.QWidget):
 
     def on_item_selected(self, current, previous):
         self.refresh_form()
+        self.update_display_order_buttons()
 
     def refresh_form(self):
         item = self.get_current_item()
@@ -1076,6 +1084,77 @@ class ItemDataTab(QtWidgets.QWidget):
         item.label_full = self.full_string_label.text()
         self.refresh_strings()
 
+    def add_display_order_item(self):
+        item = self.get_current_item()
+        if item is None:
+            return
+        item_id = item.id
+        existing_ids = {
+            self.display_order.item(i).data(QtCore.Qt.ItemDataRole.UserRole).id
+            for i in range(self.display_order.count())
+        }
+        if item_id in existing_ids:
+            self.update_display_order_buttons()
+            return
+        entry = QtWidgets.QListWidgetItem(f"#{item.id:04X} - {item.getDefaultName()}")
+        entry.setData(QtCore.Qt.ItemDataRole.UserRole, item)
+        self.display_order.addItem(entry)
+        new_row = self.display_order.count() - 1
+        self.display_order.setCurrentRow(new_row)
+        self.display_order.setFocus()
+        self.sync_display_order()
+        self.update_display_order_buttons()
+
+    def remove_display_order_item(self):
+        item = self.get_current_item()
+        if item is None or self.display_order.count() <= 1:
+            self.update_display_order_buttons()
+            return
+        item_id = item.id
+        for row in range(self.display_order.count()):
+            entry = self.display_order.item(row)
+            stored_item = entry.data(QtCore.Qt.ItemDataRole.UserRole)
+            if stored_item is not None and stored_item.id == item_id:
+                self.display_order.takeItem(row)
+                self.sync_display_order()
+                if self.display_order.count():
+                    selected_row = max(0, row - 1)
+                    selected_row = min(selected_row, self.display_order.count() - 1)
+                    self.display_order.setCurrentRow(selected_row)
+                    self.display_order.setFocus()
+                break
+        self.update_display_order_buttons()
+
+    def sync_display_order(self):
+        order_data = Data.INV_ORDER.setdefault(
+            self.item_key,
+            {"list": [], "padding": None},
+        )
+        order_data["list"] = [
+            self.display_order.item(i).data(QtCore.Qt.ItemDataRole.UserRole).id
+            for i in range(self.display_order.count())
+        ]
+
+    def update_display_order_buttons(self):
+        item = self.get_current_item()
+        if item is None:
+            self.display_order_add.setText("Add entry")
+            self.display_order_remove.setText("Delete entry")
+            self.display_order_add.setEnabled(False)
+            self.display_order_remove.setEnabled(False)
+            return
+
+        item_id = item.id
+        already_added = any(
+            self.display_order.item(i).data(QtCore.Qt.ItemDataRole.UserRole).id == item_id
+            for i in range(self.display_order.count())
+            if self.display_order.item(i).data(QtCore.Qt.ItemDataRole.UserRole) is not None
+        )
+        self.display_order_add.setText(f"Add #{item_id:04X}")
+        self.display_order_remove.setText(f"Delete #{item_id:04X}")
+        self.display_order_add.setEnabled(not already_added)
+        self.display_order_remove.setEnabled( already_added and self.display_order.count() > 1)
+
     def move_display_order_item(self, offset):
         row = self.display_order.currentRow()
         new_row = row + offset
@@ -1084,15 +1163,8 @@ class ItemDataTab(QtWidgets.QWidget):
         item = self.display_order.takeItem(row)
         self.display_order.insertItem(new_row, item)
         self.display_order.setCurrentRow(new_row)
-        order_data = Data.INV_ORDER.setdefault(
-            self.item_key,
-            {"list": [], "padding": None},
-        )
-        order_data["list"] = [
-            self.display_order.item(i)
-            .data(QtCore.Qt.ItemDataRole.UserRole).id
-            for i in range(self.display_order.count())
-        ]
+        self.sync_display_order()
+        self.update_display_order_buttons()
 
     def _isItem(self):
         return (self.item_key == "UITM")

@@ -8,7 +8,7 @@ import dataglobin.persistent as Persistent
 def main():
     app = QtWidgets.QApplication(sys.argv)
     app.setApplicationName("Dataglobin-DX")
-    app.setOrganizationName("Dataglobin")
+    app.setOrganizationName("Dataglobin-DX")
     if os.name == 'nt':
         app.setStyle('Fusion')
 
